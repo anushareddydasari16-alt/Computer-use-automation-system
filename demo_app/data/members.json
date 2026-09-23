@@ -1,0 +1,47 @@
+{
+  "10001": {
+    "member_id": "10001",
+    "name": "Elena Brooks",
+    "status": "Active",
+    "accounts": [
+      {
+        "type": "Savings",
+        "balance": 3187.45
+      },
+      {
+        "type": "Checking",
+        "balance": 864.20
+      }
+    ]
+  },
+  "20002": {
+    "member_id": "20002",
+    "name": "Marcus Lee",
+    "status": "Active",
+    "accounts": [
+      {
+        "type": "Savings",
+        "balance": 742.88
+      },
+      {
+        "type": "Checking",
+        "balance": 4321.16
+      }
+    ]
+  },
+  "30003": {
+    "member_id": "30003",
+    "name": "Priya Nair",
+    "status": "Active",
+    "accounts": [
+      {
+        "type": "Savings",
+        "balance": 5520.75
+      },
+      {
+        "type": "Checking",
+        "balance": 1276.39
+      }
+    ]
+  }
+}
