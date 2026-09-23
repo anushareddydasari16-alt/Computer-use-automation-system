@@ -1,0 +1,41 @@
+<!-- Member search page for the Northwind Community Bank portal. -->
+
+{% extends "base.html" %}
+
+{% block title %}
+Member Search
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+    <h1>Member Lookup</h1>
+
+    <p class="help-text">
+        Enter a member number to view account information.
+    </p>
+
+    <form method="post" action="/member-search">
+
+        <div class="form-row">
+            <label for="member_id">Member Number</label>
+
+            <input
+                type="text"
+                id="member_id"
+                name="member_id"
+                autocomplete="off"
+                required
+            >
+        </div>
+
+        <button type="submit">
+            Find Member
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}

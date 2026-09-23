@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 
-app = FastAPI(title="Harborline Member Portal")
+app = FastAPI(title="Northwind Community Bank")
 
 # Creating Base folder for templates, static files, and demo data
 
