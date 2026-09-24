@@ -1,6 +1,7 @@
 # Importing required libraries and modules
 
 import json
+import asyncio
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
@@ -35,11 +36,19 @@ def load_members():
 
 members = load_members()
 
-
-# Show the member search page
-
+# Show the search page and simulate a few controlled legacy-system conditions.
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
+    if request.query_params.get("permission") == "denied":
+        return templates.TemplateResponse(
+            request=request,
+            name="permission_denied.html",
+            context={}
+        )
+
+    if request.query_params.get("slow") == "1":
+        await asyncio.sleep(4)
+
     return templates.TemplateResponse(
         request=request,
         name="search.html",
@@ -68,4 +77,14 @@ async def member_search(
         request=request,
         name="member.html",
         context={"member": member}
+    )
+
+# Opening the new account form used for the human approval demo.
+
+@app.get("/new-account", response_class=HTMLResponse)
+async def new_account(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="new_account.html",
+        context={}
     )

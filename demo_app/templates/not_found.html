@@ -1,0 +1,29 @@
+<!-- Shows a clear business outcome when a member number is not found. -->
+
+{% extends "base.html" %}
+
+{% block title %}
+Member Not Found
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+    <h1>Member Not Found</h1>
+
+    <div class="message warning">
+        No member record was found for member number {{ member_id }}.
+    </div>
+
+    <p>
+        Check the member number and try again.
+    </p>
+
+    <a href="/" class="button-link">
+        Back to Member Search
+    </a>
+
+</div>
+
+{% endblock %}

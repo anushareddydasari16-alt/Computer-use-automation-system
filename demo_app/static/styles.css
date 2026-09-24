@@ -1,0 +1,147 @@
+/* Basic styling for the Northwind Community Bank demo portal. */
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #eef1f4;
+    color: #222;
+}
+
+.top-bar {
+    background: #2f4052;
+    color: white;
+    padding: 14px 28px;
+    border-bottom: 4px solid #aab3bb;
+}
+
+.bank-name {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.system-name {
+    font-size: 12px;
+    margin-top: 3px;
+    color: #d7dde3;
+}
+
+.page {
+    width: 760px;
+    margin: 35px auto;
+}
+
+.panel {
+    background: white;
+    border: 1px solid #aab3bb;
+    padding: 25px;
+}
+
+h1 {
+    margin-top: 0;
+    font-size: 24px;
+}
+
+h2 {
+    font-size: 18px;
+    margin-top: 30px;
+}
+
+.help-text {
+    color: #555;
+    margin-bottom: 24px;
+}
+
+.form-row {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 7px;
+}
+
+input {
+    width: 280px;
+    padding: 9px;
+    border: 1px solid #777;
+    font-size: 15px;
+}
+
+button,
+.button-link {
+    background: #355b78;
+    color: white;
+    border: none;
+    padding: 9px 18px;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+button:hover,
+.button-link:hover {
+    background: #29475e;
+}
+
+.page-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.back-link {
+    font-size: 14px;
+}
+
+.member-summary {
+    background: #f4f5f6;
+    border: 1px solid #c6ccd1;
+    padding: 15px;
+    line-height: 2;
+}
+
+.member-summary div {
+    border-bottom: 1px solid #ddd;
+}
+
+.member-summary div:last-child {
+    border-bottom: none;
+}
+
+.field-label {
+    display: inline-block;
+    width: 160px;
+    font-weight: bold;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th,
+td {
+    border: 1px solid #aaa;
+    padding: 10px;
+    text-align: left;
+}
+
+th {
+    background: #dfe5e9;
+}
+
+.warning {
+    background: #fff4d6;
+    border: 1px solid #d7b45b;
+    padding: 12px;
+    margin: 15px 0;
+}
+
+footer {
+    width: 760px;
+    margin: 20px auto;
+    font-size: 12px;
+    color: #666;
+}

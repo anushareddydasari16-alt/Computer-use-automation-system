@@ -1,0 +1,29 @@
+<!-- Shows a controlled permission error for automation testing. -->
+
+{% extends "base.html" %}
+
+{% block title %}
+Permission Denied
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+    <h1>Permission Denied</h1>
+
+    <div class="message warning">
+        You do not have permission to access this member service.
+    </div>
+
+    <p>
+        Contact an administrator if you believe you should have access.
+    </p>
+
+    <a href="/" class="button-link">
+        Return to Member Search
+    </a>
+
+</div>
+
+{% endblock %}
