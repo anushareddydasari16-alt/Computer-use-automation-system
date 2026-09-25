@@ -1,0 +1,29 @@
+<!-- Shows when the member already has the selected account type. -->
+
+{% extends "base.html" %}
+
+{% block title %}
+Account Already Exists
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+    <h1>Account Already Exists</h1>
+
+    <div class="message warning">
+        {{ member.name }} already has a {{ account_type }} account.
+    </div>
+
+    <p>
+        Select a different account type or return to the member search.
+    </p>
+
+    <a href="/new-account" class="button-link">
+        Try Another Account
+    </a>
+
+</div>
+
+{% endblock %}

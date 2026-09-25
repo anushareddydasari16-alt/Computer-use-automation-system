@@ -1,0 +1,1 @@
+# Data models shared across discovery, replay, and safety checks.

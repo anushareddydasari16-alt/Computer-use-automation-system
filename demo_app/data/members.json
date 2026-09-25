@@ -20,10 +20,6 @@
     "status": "Active",
     "accounts": [
       {
-        "type": "Savings",
-        "balance": 742.88
-      },
-      {
         "type": "Checking",
         "balance": 4321.16
       }

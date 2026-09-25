@@ -1,0 +1,52 @@
+<!-- Reviews the new account details before the final action is submitted. -->
+
+{% extends "base.html" %}
+
+{% block title %}
+Review New Account
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+    <h1>Review New Account</h1>
+
+    <p class="help-text">
+        Confirm the details below before creating the account.
+    </p>
+
+    <div class="member-summary">
+
+        <div>
+            <span class="field-label">Member Number</span>
+            <span>{{ member_id }}</span>
+        </div>
+
+        <div>
+            <span class="field-label">Account Type</span>
+            <span>{{ account_type }}</span>
+        </div>
+
+        <div>
+            <span class="field-label">Opening Deposit</span>
+            <span>${{ "%.2f"|format(opening_deposit) }}</span>
+        </div>
+
+    </div>
+
+    <form method="post" action="/new-account/submit">
+
+        <input type="hidden" name="member_id" value="{{ member_id }}">
+        <input type="hidden" name="account_type" value="{{ account_type }}">
+        <input type="hidden" name="opening_deposit" value="{{ opening_deposit }}">
+
+        <button type="submit">
+            Create Account
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}

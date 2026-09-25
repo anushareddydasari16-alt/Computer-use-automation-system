@@ -88,3 +88,67 @@ async def new_account(request: Request):
         name="new_account.html",
         context={}
     )
+
+
+# Validate the member and account type before showing the final review page.
+
+@app.post("/new-account/review", response_class=HTMLResponse)
+async def review_new_account(
+    request: Request,
+    member_id: str = Form(...),
+    account_type: str = Form(...),
+    opening_deposit: float = Form(...)
+):
+    member_id = member_id.strip()
+    member = members.get(member_id)
+
+    # The member must already exist before a new account can be opened
+    if member is None:
+        return templates.TemplateResponse(
+            request=request,
+            name="not_found.html",
+            context={"member_id": member_id}
+        )
+
+    # Prevent opening the same account type twice for one member
+    existing_accounts = member.get("accounts", [])
+
+    for account in existing_accounts:
+        if account["type"].lower() == account_type.lower():
+            return templates.TemplateResponse(
+                request=request,
+                name="account_exists.html",
+                context={
+                    "member": member,
+                    "account_type": account_type
+                }
+            )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="review.html",
+        context={
+            "member_id": member_id,
+            "account_type": account_type,
+            "opening_deposit": opening_deposit
+        }
+    )
+
+# Completed the demo account request after the final review step.
+
+@app.post("/new-account/submit", response_class=HTMLResponse)
+async def submit_new_account(
+    request: Request,
+    member_id: str = Form(...),
+    account_type: str = Form(...),
+    opening_deposit: float = Form(...)
+):
+    return templates.TemplateResponse(
+        request=request,
+        name="confirmation.html",
+        context={
+            "member_id": member_id.strip(),
+            "account_type": account_type,
+            "opening_deposit": opening_deposit
+        }
+    )

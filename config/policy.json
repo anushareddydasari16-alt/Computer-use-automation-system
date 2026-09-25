@@ -1,0 +1,25 @@
+{
+  "allowed_origins": [
+    "http://127.0.0.1:8000"
+  ],
+  "allowed_routes": [
+    "/",
+    "/member-search",
+    "/new-account",
+    "/new-account/review",
+    "/new-account/submit"
+  ],
+  "allowed_actions": [
+    "navigate",
+    "click",
+    "type",
+    "select",
+    "extract",
+    "wait"
+  ],
+  "risk_policy": {
+    "safe": "allow",
+    "reversible": "allow",
+    "irreversible": "require_human"
+  }
+}

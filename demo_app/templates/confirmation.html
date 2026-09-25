@@ -1,0 +1,44 @@
+<!-- Confirms that the demo account request was completed. -->
+
+{% extends "base.html" %}
+
+{% block title %}
+Account Created
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+    <h1>Account Created</h1>
+
+    <div class="message success">
+        The new account request was completed successfully.
+    </div>
+
+    <div class="member-summary">
+
+        <div>
+            <span class="field-label">Member Number</span>
+            <span>{{ member_id }}</span>
+        </div>
+
+        <div>
+            <span class="field-label">Account Type</span>
+            <span>{{ account_type }}</span>
+        </div>
+
+        <div>
+            <span class="field-label">Opening Deposit</span>
+            <span>${{ "%.2f"|format(opening_deposit) }}</span>
+        </div>
+
+    </div>
+
+    <a href="/" class="button-link">
+        Return to Member Search
+    </a>
+
+</div>
+
+{% endblock %}
