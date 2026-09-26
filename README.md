@@ -1,6 +1,5 @@
 
-```markdown
-# Computer-Use Automation System
+## Computer-Use Automation System
 
 A small end-to-end computer-use automation system built for the interface.ai engineering take-home assignment.
 
@@ -21,7 +20,6 @@ The project also demonstrates:
 
 The target application is a local synthetic banking application built with FastAPI.
 
----
 
 ## Tech Stack
 
@@ -33,11 +31,10 @@ The target application is a local synthetic banking application built with FastA
 - Pytest
 - Jinja2
 
----
+
 
 ## Project Structure
 
-```text
 computer-use-automation-system/
 │
 ├── artifacts/
@@ -79,9 +76,7 @@ computer-use-automation-system/
 ├── README.md
 ├── REPORT.md
 └── requirements.txt
-```
 
----
 
 ## 1. Setup
 
