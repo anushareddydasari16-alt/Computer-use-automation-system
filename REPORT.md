@@ -1,105 +1,109 @@
-## Computer-Use Automation System Report
+# Computer-Use Automation System Report
 
 ## 1. Architecture
 
-The system is designed around one main separation: the LLM is used to discover a workflow, while production replay executes a saved workflow without asking the LLM what to do.
+The main idea of this project is simple: use an LLM once to learn the steps for a task, save those steps, and then replay them later without asking the LLM to make decisions again.
 
-During discovery, the user supplies a natural-language goal and target URL. A Groq-hosted LLM receives the current browser state and chooses one typed action at a time. The Playwright surface performs the action against the live synthetic banking application. The loop continues until the goal is completed or a stopping condition such as maximum steps, timeout, or a dead-end is reached.
+For discovery, the user gives a goal and a target URL. The system opens the banking application in Chromium using Playwright. The Groq model looks at the current page information and decides one action at a time, such as typing a member ID, clicking a button, or extracting a value. After each action, the page is observed again until the goal is completed or the run reaches a stopping condition such as maximum steps or timeout.
 
-After a successful discovery, the executed steps are compiled into a reusable capability artifact. Literal input values are replaced with parameters so the workflow can be reused for other members.
+When discovery succeeds, the completed actions are converted into a reusable JSON artifact. The artifact is then used by the replay engine.
 
-Replay is intentionally separate from discovery. `ReplayEngine` loads an artifact, substitutes runtime parameters, executes the saved actions in order, verifies checkpoints, collects outputs, and returns a structured result. It has no LLM planner dependency.
+Replay is completely separate from the discovery logic. It reads the saved artifact, replaces placeholders with the new input values, performs the recorded steps, checks the expected page state, and returns the result. The replay path does not call the LLM to decide what to do.
 
-The system is divided into small layers: `agent` for discovery, `surface` for UI interaction, `artifact` for capability creation, `replay` for deterministic execution, `safety` for policy and redaction, `evidence` for logs, and `handoff` for human intervention.
-
-I chose a single-process implementation because it keeps the complete vertical slice easy to understand and test. A production system would likely separate browser sessions, orchestration, and durable storage, but that infrastructure was not necessary to demonstrate the core design.
+I separated the project into small folders for discovery, replay, browser interaction, safety, artifacts, evidence, and human handoff. I kept everything in one application instead of building multiple services because the goal here was to show a complete working flow without adding unnecessary infrastructure.
 
 ## 2. Artifact schema
 
-The capability artifact is a typed, serializable, and versioned Pydantic model. It is designed as a callable contract rather than a raw transcript of the discovery conversation.
+I wanted the artifact to be more than just a list of browser clicks. It needed to describe what the capability does, what input it needs, what output it returns, and how replay should know that a step worked.
 
-The artifact records the capability name and description, schema version, capability version, target surface and origin, typed inputs, typed outputs, ordered actions, checkpoints, and the final success condition.
+The artifact is defined with Pydantic models and stored as JSON. It contains a schema version, capability version, name, description, target application, typed inputs, typed outputs, ordered steps, checkpoints, and a success condition.
 
-Each browser action stores its action type, value if needed, risk level, reason, timeout, and target information. Targets can use role, accessible name, visible text, form name, or CSS. Important targets also contain a `robustness_note` explaining why the chosen locator should remain stable during replay.
+Each step contains the action type and information about how to find the target control. Depending on the element, the target can use a role, visible name, form field name, text, or CSS selector.
 
-For the main capability, discovery starts with member `10001`, but the compiler replaces the literal value with `{{member_id}}`. This makes the same artifact reusable for other members.
+I also added a `robustness_note` to important targets. This explains why a locator was chosen. For example, the member ID field is found by its form name instead of its position on the page. The savings balance is found from the row containing `Savings` instead of saving the exact dollar value seen during discovery.
 
-The balance extraction was also normalized. Instead of storing the dollar value seen during discovery, the final artifact targets the balance cell in the row containing `Savings`. This prevents replay from depending on the original member's balance.
+The discovery run uses member `10001`, but the saved artifact replaces that value with `{{member_id}}`. Because of this, the same artifact can later be replayed with members such as `30003`, `80008`, or `99999`.
 
-The main artifact, `lookup_savings_balance.v1.json`, accepts `member_id` as a string and returns `savings_balance` as a string. Schema and capability versions make later changes reviewable rather than silently replacing behavior.
+The main artifact is `lookup_savings_balance.v1.json`. It accepts `member_id` as a string and returns `savings_balance` as a string.
 
 ## 3. Determinism & error handling
 
-Replay follows the saved artifact in a fixed order and does not use the LLM for decisions. Runtime values are substituted into saved steps, each action is policy checked, the action is executed through the surface layer, and checkpoints are verified before continuing.
+The replay engine follows the saved artifact in order. It does not ask the LLM what the next action should be. This is the main difference between discovery and replay.
 
-A normal replay with member `30003` returns `$5520.75`. The CLI also reports `LLM decision calls: 0`.
+For a normal replay, the system replaces the input placeholder, executes each saved action, checks the policy, verifies checkpoints, and collects the requested output. For example, member `30003` returns a savings balance of `$5520.75`.
 
-The result contract separates runtime conditions instead of treating every non-happy path as an exception.
+I also handled different runtime situations separately instead of treating all of them as errors.
 
-An expected business outcome is returned when the application behaves correctly but the requested record does not exist. Member `99999` returns `business_outcome = member_not_found`.
+Member `99999` does not exist. In this case the system returns `business_outcome = member_not_found`. This is a valid result from the banking application, so I did not treat it as a system failure.
 
-A recoverable condition is handled with predefined deterministic behavior. Member `80008` produces a temporary `Processing Request` screen. Replay recognizes the state, clicks the known `Continue` control, checks that the resulting URL is still allowed by policy, records the recovery, and continues successfully.
+Member `80008` shows a temporary `Processing Request` page. The replay engine recognizes this condition, clicks `Continue`, checks that the new URL is still allowed, records the recovery, and continues the replay. The final run still succeeds and returns `$2468.90`.
 
-A hard failure stops the workflow. Member `70007` produces `Permission Denied`. The returned failure records the failed step, expected state, observed state, and a clear message. A screenshot is also stored as debugging evidence.
+Member `70007` is used to simulate a permission problem. When the page shows `Permission Denied`, replay stops and returns a failure containing the failed step, what it expected, what it observed, and a readable error message. It also saves a screenshot for debugging.
 
-Playwright timeouts have a bounded one-time retry path. The system does not use an open-ended recovery loop or ask the LLM to improvise during replay.
+There is also a one-time retry for Playwright timeout errors. I kept the retry limited because replay should not continue forever when the application is not responding.
 
-Checkpoints are used after important transitions so replay does not assume a click or form submission succeeded. If the expected text or URL is not reached, replay stops rather than continuing blindly.
+Checkpoints are important because the system should not assume that a click worked. After important steps, replay checks the page text or URL before continuing.
 
 ## 4. Heterogeneity & multi-tenant
 
-The current implementation uses a web application and Playwright, but browser-specific operations are isolated behind a `Surface` abstraction. Discovery and replay interact with operations such as open, observe, act, screenshot, and close instead of depending directly on Playwright throughout the system.
+The current project uses a web application, but I did not want discovery and replay to depend directly on Playwright everywhere in the code.
 
-A future desktop implementation could provide another surface adapter using an accessibility API, Windows UI Automation, screenshots, OCR, or coordinate-based interaction while keeping the higher-level action, artifact, replay, safety, and evidence contracts similar.
+Browser interaction is placed behind a `Surface` abstraction. The higher-level code uses operations such as open, observe, act, screenshot, and close.
 
-The current target strategy favors semantic information such as roles, labels, form names, visible text, and constrained CSS instead of screen coordinates. This is appropriate for the implemented web surface, although a real legacy or desktop system may require additional visual or accessibility-based targeting.
+Today, the implementation of that surface uses Playwright. In the future, another implementation could use Windows UI Automation, accessibility APIs, screenshots, OCR, or coordinates for desktop applications.
 
-For multi-tenant use, I would keep a reviewed base capability for a vendor application and apply small version- or tenant-specific overrides for differences such as route prefixes, branding text, or target descriptions. Safety rules would not be weakened by an override.
+For the current web application, I prefer semantic targets such as form names, roles, labels, and visible text before relying on CSS. This is more stable than using screen coordinates.
 
-Repeated checkpoint or target failures would be treated as drift signals requiring review rather than allowing automation to guess. Full tenant overlay resolution and desktop execution are design extensions only; they are not implemented in this take-home.
+For a multi-tenant setup, I would keep one main capability for the common vendor application and add small tenant or version-specific overrides when needed. For example, one institution might have different button text or a different route prefix.
+
+I did not build the full multi-tenant system in this project. The goal was to make sure the artifact and surface design could support it later without rebuilding the whole automation approach.
 
 ## 5. Escalation & handoff
 
-The project implements a real same-session human handoff for an irreversible action.
+The project also includes a human handoff for an action that should not be completed automatically.
 
-The `open_savings_account` capability performs the safe preparation steps automatically. The final `Create Account` action is marked irreversible. The safety policy does not allow automation to perform it directly and instead routes the step to the handoff controller.
+The `open_savings_account` artifact prepares a savings account request. The safe steps are completed by automation. The final `Create Account` action is marked as irreversible.
 
-The intervention request records the capability, goal, current step, reason, current URL, and screenshot. Automation is paused and control ownership is changed from automation to the human.
+When replay reaches this step, the safety policy does not allow the system to click the button automatically. Instead, it creates a human intervention request.
 
-The same headed Chromium session remains open. The human reviews the account details and manually clicks `Create Account`. The human action is recorded, an after screenshot is captured, and control is then returned to automation. Replay re-observes the existing session and verifies the confirmation checkpoint.
+The request includes the capability name, current step, reason for stopping, current URL, and a screenshot. Automation pauses, and the same Chromium browser remains open.
 
-The command line is used as the minimal operator interface. This proves the control-transfer seam without building a full co-browsing product.
+The human can review the information and click `Create Account` manually. After that, the human returns to the terminal, records a short description of what was done, and gives control back to the automation.
 
-Discovery also detects stopping conditions such as timeout, maximum steps, and dead-end states. In this vertical slice those conditions stop with structured evidence. A production extension would route those discovery stops through the same operator intervention mechanism.
+Replay then looks at the same browser session again and verifies that the expected confirmation page was reached.
+
+I used the command line as the operator interface because a full operator dashboard was outside the scope of this project. The important part was proving that automation could stop, give control to a person, and continue using the same live session.
 
 ## 6. Safety
 
-Safety rules are configured in `config/policy.json` rather than being hidden inside prompts.
+The safety rules are stored in `config/policy.json`.
 
-The configuration explicitly defines allowed origins, allowed routes, allowed action types, and behavior for safe, reversible, and irreversible actions.
+The policy defines which origins, routes, and action types are allowed. It also defines how safe, reversible, and irreversible actions should be handled.
 
-Actions are checked before execution. For automated actions that can change application state or location, replay observes the resulting page and verifies that the URL is still inside the route allowlist. The deterministic processing-screen recovery performs the same post-action URL check.
+Before an automated action runs, the system checks the policy. After browser actions that may change the current page, the system observes the new URL and checks it again against the allowed routes.
 
-Irreversible actions require human control rather than automatic execution.
+I added the same check to the automatic recovery flow. This means the `Continue` recovery action cannot move the automation to an unapproved route without being detected.
 
-Evidence is passed through a redaction layer before it is written. Sensitive dictionary keys such as passwords, authorization values, tokens, and API keys are redacted, and SSN-like values are also removed from text.
+Irreversible actions are not automatically executed. They require human control.
 
-The real Groq API key is stored only in the local `.env` file, which is excluded from Git. `.env.example` contains configuration names but no secret.
+The logging system also includes redaction. Keys such as passwords, API keys, tokens, and authorization values are removed before being written to evidence. SSN-like values are also redacted.
 
-The banking application uses synthetic records, which avoids using real regulated customer information.
+The real Groq API key is stored only in `.env`, and `.env` is excluded from Git. The example environment file contains only an empty placeholder.
 
-The main limitation is that redaction is rule-based and the current environment is a local demonstration. A production system would require stronger data classification, encrypted evidence storage, authentication, access control, retention policies, and auditing.
+The banking application uses synthetic member data, so no real customer information is needed for the demo.
+
+For a production banking environment, this safety layer would need stronger access control, encrypted evidence storage, authentication, audit logging, and formal data retention rules.
 
 ## 7. Cuts
 
-I intentionally kept the project as a small complete vertical slice instead of adding production infrastructure.
+I intentionally kept this project focused on the full required workflow instead of adding extra features.
 
-I did not build a native desktop adapter, production multi-tenant capability registry, durable workflow database, distributed execution queue, remote operator console, automatic artifact repair, or unrestricted LLM fallback during replay.
+I did not build a desktop automation adapter, production database, distributed worker system, multi-tenant capability registry, remote operator dashboard, or automatic artifact repair.
 
-The current observation system uses browser-visible text and control metadata rather than a full screenshot-based vision pipeline. This works for the demonstrated web application but does not represent every legacy application surface.
+I also did not add an LLM fallback during replay. If replay fails, I prefer it to stop and return clear evidence instead of allowing the model to change the saved workflow automatically.
 
-The next technical extension would be a second `Surface` implementation using accessibility and visual information so the same artifact and replay architecture could operate when useful DOM information is unavailable.
+The current observation system mainly uses browser text and control information. A future version could add screenshot and accessibility-based targeting for applications that do not have useful browser structure.
 
-For production use I would also replace local evidence storage with encrypted durable storage, add authenticated operator control, capability approval/version management, stronger runtime input validation, and monitoring for repeated checkpoint failures.
+If I continued the project, I would first improve the surface layer for legacy and desktop applications, then add stronger runtime input validation, capability approval/version management, secure evidence storage, and an authenticated operator interface.
 
-These cuts were deliberate. The project focuses on the required complete path: natural-language goal, genuine LLM-driven discovery, typed reusable artifact, deterministic replay, structured runtime outcomes, safety enforcement, evidence, and same-session human handoff.
+The current version focuses on the complete path I wanted to demonstrate: a natural-language goal, real LLM discovery, a reusable artifact, deterministic replay, clear runtime outcomes, safety checks, evidence, and a same-session human handoff.
