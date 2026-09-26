@@ -1,0 +1,124 @@
+{
+  "schema_version": "1.0",
+  "capability_version": 1,
+  "name": "open_savings_account",
+  "description": "Prepares a new savings account request and requires human approval before the final account creation step.",
+  "surface_type": "web",
+  "target_origin": "http://127.0.0.1:8000",
+  "inputs": [
+    {
+      "name": "member_id",
+      "type": "string",
+      "description": "Member number.",
+      "required": true
+    },
+    {
+      "name": "opening_deposit",
+      "type": "number",
+      "description": "Opening deposit amount.",
+      "required": true
+    }
+  ],
+  "outputs": [],
+  "steps": [
+    {
+      "action": "navigate",
+      "target": null,
+      "value": "http://127.0.0.1:8000/new-account",
+      "output_key": null,
+      "risk": "safe",
+      "reason": "Open the new account form.",
+      "timeout_ms": 5000
+    },
+    {
+      "action": "type",
+      "target": {
+        "description": "Member Number",
+        "role": null,
+        "name": "member_id",
+        "text": null,
+        "css": null
+      },
+      "value": "{{member_id}}",
+      "output_key": null,
+      "risk": "safe",
+      "reason": "Enter the member number.",
+      "timeout_ms": 5000
+    },
+    {
+      "action": "select",
+      "target": {
+        "description": "Account Type",
+        "role": null,
+        "name": "account_type",
+        "text": null,
+        "css": null
+      },
+      "value": "Savings",
+      "output_key": null,
+      "risk": "safe",
+      "reason": "Choose a savings account.",
+      "timeout_ms": 5000
+    },
+    {
+      "action": "type",
+      "target": {
+        "description": "Opening Deposit",
+        "role": null,
+        "name": "opening_deposit",
+        "text": null,
+        "css": null
+      },
+      "value": "{{opening_deposit}}",
+      "output_key": null,
+      "risk": "safe",
+      "reason": "Enter the opening deposit.",
+      "timeout_ms": 5000
+    },
+    {
+      "action": "click",
+      "target": {
+        "description": "Review",
+        "role": null,
+        "name": null,
+        "text": null,
+        "css": "button[type=\"submit\"]"
+      },
+      "value": null,
+      "output_key": null,
+      "risk": "safe",
+      "reason": "Open the review page.",
+      "timeout_ms": 5000
+    },
+    {
+      "action": "click",
+      "target": {
+        "description": "Create Account",
+        "role": null,
+        "name": null,
+        "text": null,
+        "css": "button[type=\"submit\"]"
+      },
+      "value": null,
+      "output_key": null,
+      "risk": "irreversible",
+      "reason": "Creating the account changes business state and requires human approval.",
+      "timeout_ms": 5000
+    }
+  ],
+  "checkpoints": [
+    {
+      "after_step": 5,
+      "description": "The request should reach the review page.",
+      "expected_text": null,
+      "expected_url_contains": "/new-account/review"
+    },
+    {
+      "after_step": 6,
+      "description": "The human-approved account request should reach confirmation.",
+      "expected_text": null,
+      "expected_url_contains": "/new-account/submit"
+    }
+  ],
+  "success_condition": "The account request reaches confirmation only after the irreversible final action is completed by a human."
+}

@@ -1,4 +1,6 @@
-# Manages pause, human control, and resume on the same live browser session.
+# Pauses automation and transfers control of the same browser session to a human.
+
+import asyncio
 
 from src.evidence.logger import EvidenceLogger
 from src.handoff.types import (
@@ -31,10 +33,12 @@ class HandoffController:
         page_state = await self.surface.observe()
 
         screenshot_path = self.logger.file_path(
-            f"handoff_step_{current_step}.png"
+            f"handoff_before_step_{current_step}.png"
         )
 
-        await self.surface.screenshot(screenshot_path)
+        await self.surface.screenshot(
+            screenshot_path
+        )
 
         request = InterventionRequest(
             capability_name=capability_name,
@@ -63,13 +67,20 @@ class HandoffController:
 
         self.logger.log(
             "control_changed",
-            {"owner": ControlOwner.HUMAN.value}
+            {
+                "owner": ControlOwner.HUMAN.value
+            }
         )
 
-    def record_human_action(self, description: str):
+    def record_human_action(
+        self,
+        description: str
+    ):
         self.logger.log(
             "human_action",
-            {"description": description}
+            {
+                "description": description
+            }
         )
 
     def resume(self):
@@ -79,5 +90,73 @@ class HandoffController:
 
         self.logger.log(
             "control_changed",
-            {"owner": ControlOwner.AUTOMATION.value}
+            {
+                "owner": ControlOwner.AUTOMATION.value
+            }
         )
+
+    async def run_handoff(
+        self,
+        capability_name: str,
+        goal: str,
+        current_step: int,
+        reason: str
+    ):
+        request = await self.request_intervention(
+            capability_name=capability_name,
+            goal=goal,
+            current_step=current_step,
+            reason=reason
+        )
+
+        self.take_control()
+
+        print("\nHuman Intervention Required")
+        print("---------------------------")
+        print(f"Capability: {request.capability_name}")
+        print(f"Step: {request.current_step}")
+        print(f"Reason: {request.reason}")
+        print(f"Current URL: {request.current_url}")
+
+        print(
+            "\nThe same Chromium session is still open."
+        )
+
+        await asyncio.to_thread(
+            input,
+            "Complete the required action in the browser, "
+            "then press Enter here to continue..."
+        )
+
+        description = await asyncio.to_thread(
+            input,
+            "Briefly describe the action you completed: "
+        )
+
+        if not description.strip():
+            description = (
+                "Human completed the blocked action "
+                "in the live browser."
+            )
+
+        self.record_human_action(
+            description
+        )
+
+        after_path = self.logger.file_path(
+            f"handoff_after_step_{current_step}.png"
+        )
+
+        await self.surface.screenshot(
+            after_path
+        )
+
+        self.logger.log(
+            "handoff_completed",
+            {
+                "step": current_step,
+                "after_screenshot": after_path
+            }
+        )
+
+        self.resume()

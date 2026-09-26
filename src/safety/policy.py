@@ -1,44 +1,119 @@
-# Checks whether a browser action is allowed before it is executed.
+# Enforces the configured automation safety policy.
 
 from urllib.parse import urlparse
 
-from src.models.action import ActionType, BrowserAction, RiskLevel
+from src.models.action import (
+    ActionType,
+    BrowserAction,
+)
 
 
 class PolicyEngine:
 
-    def __init__(self, allowed_origins: list[str]):
-        self.allowed_origins = allowed_origins
+    def __init__(
+        self,
+        allowed_origins: list[str],
+        allowed_routes: list[str] | None = None,
+        allowed_actions: list[str] | None = None,
+        risk_policy: dict | None = None
+    ):
+        self.allowed_origins = set(
+            allowed_origins
+        )
+
+        self.allowed_routes = set(
+            allowed_routes or []
+        )
 
         self.allowed_actions = {
-            ActionType.NAVIGATE,
-            ActionType.CLICK,
-            ActionType.TYPE,
-            ActionType.SELECT,
-            ActionType.EXTRACT,
-            ActionType.WAIT,
+            ActionType(action)
+            for action in (
+                allowed_actions
+                or [item.value for item in ActionType]
+            )
         }
 
-    def check(self, action: BrowserAction) -> tuple[bool, str]:
+        self.risk_policy = risk_policy or {
+            "safe": "allow",
+            "reversible": "allow",
+            "irreversible": "require_human"
+        }
+
+    def check(
+        self,
+        action: BrowserAction
+    ) -> tuple[bool, str]:
 
         if action.action not in self.allowed_actions:
-            return False, f"Action '{action.action}' is not allowed."
+            return (
+                False,
+                f"Action type '{action.action.value}' "
+                "is not allowed."
+            )
 
-        if action.risk == RiskLevel.IRREVERSIBLE:
-            return False, "Human approval is required for this action."
+        risk_rule = self.risk_policy.get(
+            action.risk.value,
+            "deny"
+        )
+
+        if risk_rule == "deny":
+            return (
+                False,
+                f"Risk level '{action.risk.value}' "
+                "is blocked by policy."
+            )
+
+        if risk_rule == "require_human":
+            return (
+                False,
+                "Human approval is required for this action."
+            )
 
         if action.action == ActionType.NAVIGATE:
-            if action.value is None:
-                return False, "Navigation requires a URL."
+            if not isinstance(action.value, str):
+                return (
+                    False,
+                    "Navigation requires a URL."
+                )
 
-            if not self._origin_is_allowed(str(action.value)):
-                return False, "Navigation target is outside the allowed origin."
+            return self.check_url(
+                action.value
+            )
 
-        return True, "Action allowed."
+        return (
+            True,
+            "Action allowed by policy."
+        )
 
-    def _origin_is_allowed(self, url: str) -> bool:
+    def check_url(
+        self,
+        url: str
+    ) -> tuple[bool, str]:
+
         parsed = urlparse(url)
 
-        origin = f"{parsed.scheme}://{parsed.netloc}"
+        origin = (
+            f"{parsed.scheme}://{parsed.netloc}"
+        )
 
-        return origin in self.allowed_origins
+        if origin not in self.allowed_origins:
+            return (
+                False,
+                f"Origin '{origin}' is not allowed."
+            )
+
+        route = parsed.path or "/"
+
+        if (
+        self.allowed_routes
+        and route not in self.allowed_routes
+    ):
+         return (
+            False,
+        f"Route '{route}' is not allowed."
+    )
+
+        return (
+            True,
+            "URL allowed by policy."
+        )

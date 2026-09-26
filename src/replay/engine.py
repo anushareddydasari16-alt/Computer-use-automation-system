@@ -1,13 +1,15 @@
-# Replays a saved capability deterministically without using an LLM.
+# Replays saved capabilities without LLM decisions and supports same-session human handoff.
 
 import asyncio
 
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from src.evidence.logger import EvidenceLogger
+from src.handoff.controller import HandoffController
 from src.models.action import (
     ActionType,
     BrowserAction,
+    RiskLevel,
     Target,
 )
 from src.models.artifact import (
@@ -29,11 +31,13 @@ class ReplayEngine:
         self,
         surface: Surface,
         policy: PolicyEngine,
-        logger: EvidenceLogger
+        logger: EvidenceLogger,
+        handoff: HandoffController | None = None
     ):
         self.surface = surface
         self.policy = policy
         self.logger = logger
+        self.handoff = handoff
         self.recoveries = []
 
     async def replay(
@@ -81,44 +85,62 @@ class ReplayEngine:
                 }
             )
 
+            # Risky actions are never executed automatically.
             if not allowed:
-                return await self._failure_with_evidence(
-                    step_number=step_number,
-                    expected="Action allowed by policy",
-                    observed=reason
-                )
+                if (
+                    action.risk == RiskLevel.IRREVERSIBLE
+                    and self.handoff is not None
+                ):
+                    handoff_result = await self._handle_handoff(
+                        artifact=artifact,
+                        action=action,
+                        step_number=step_number,
+                        reason=reason
+                    )
 
-            try:
-                value = await self._run_action(
-                    action,
-                    step_number
-                )
+                    if handoff_result is not None:
+                        return handoff_result
 
-            except Exception as error:
-                return await self._failure_with_evidence(
-                    step_number=step_number,
-                    expected="Action completed successfully",
-                    observed=str(error)
-                )
+                else:
+                    return await self._failure_with_evidence(
+                        step_number=step_number,
+                        expected="Action allowed by policy",
+                        observed=reason
+                    )
 
-            if (
-                action.output_key
-                and value is not None
-            ):
-                outputs[action.output_key] = (
-                    value.strip()
-                    if isinstance(value, str)
-                    else value
-                )
+            else:
+                try:
+                    value = await self._run_action(
+                        action,
+                        step_number
+                    )
 
-            self.logger.log(
-                "replay_action_completed",
-                {
-                    "step": step_number,
-                    "action": action.action.value,
-                    "output_key": action.output_key
-                }
-            )
+                except Exception as error:
+                    return await self._failure_with_evidence(
+                        step_number=step_number,
+                        expected="Action completed successfully",
+                        observed=str(error)
+                    )
+
+                if (
+                    action.output_key
+                    and value is not None
+                ):
+                    outputs[action.output_key] = (
+                        value.strip()
+                        if isinstance(value, str)
+                        else value
+                    )
+
+                self.logger.log(
+                    "replay_action_completed",
+                    {
+                        "step": step_number,
+                        "action": action.action.value,
+                        "output_key": action.output_key,
+                        "performed_by": "automation"
+                    }
+                )
 
             checkpoint = self._checkpoint_for_step(
                 artifact.checkpoints,
@@ -164,6 +186,46 @@ class ReplayEngine:
             status=RunStatus.SUCCESS,
             outputs=outputs
         )
+
+    async def _handle_handoff(
+        self,
+        artifact: CapabilityArtifact,
+        action: BrowserAction,
+        step_number: int,
+        reason: str
+    ):
+        if self.handoff is None:
+            return await self._failure_with_evidence(
+                step_number=step_number,
+                expected="Human handoff available",
+                observed="No handoff controller configured"
+            )
+
+        await self.handoff.run_handoff(
+            capability_name=artifact.name,
+            goal=artifact.description,
+            current_step=step_number,
+            reason=reason
+        )
+
+        state = await self.surface.observe()
+
+        self.logger.log(
+            "human_step_completed",
+            {
+                "step": step_number,
+                "action": action.action.value,
+                "target": (
+                    action.target.model_dump()
+                    if action.target
+                    else None
+                ),
+                "performed_by": "human",
+                "current_url": state["url"]
+            }
+        )
+
+        return None
 
     async def _run_action(
         self,
@@ -227,7 +289,6 @@ class ReplayEngine:
             if recovery_result is not None:
                 return recovery_result
 
-            # Read the page again after recovery.
             state = await self.surface.observe()
             page_text = state["text"]
 

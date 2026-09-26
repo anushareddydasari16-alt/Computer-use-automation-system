@@ -8,6 +8,8 @@ from pathlib import Path
 
 from src.agent.discovery import DiscoveryAgent
 from src.artifact.compiler import ArtifactCompiler
+from src.handoff.controller import HandoffController
+
 from src.config import (
     GROQ_MODEL,
     MAX_STEPS,
@@ -135,7 +137,10 @@ async def run_discovery(goal: str, target: str):
     policy_config = load_policy()
 
     policy = PolicyEngine(
-        allowed_origins=policy_config["allowed_origins"]
+    allowed_origins=policy_config["allowed_origins"],
+    allowed_routes=policy_config["allowed_routes"],
+    allowed_actions=policy_config["allowed_actions"],
+    risk_policy=policy_config["risk_policy"]
     )
 
     run_time = datetime.now().strftime(
@@ -190,12 +195,16 @@ async def run_discovery(goal: str, target: str):
 
 async def run_replay(
     artifact_path: str,
-    member_id: str
+    member_id: str,
+    opening_deposit: float | None = None
 ):
     policy_config = load_policy()
 
     policy = PolicyEngine(
-        allowed_origins=policy_config["allowed_origins"]
+    allowed_origins=policy_config["allowed_origins"],
+    allowed_routes=policy_config["allowed_routes"],
+    allowed_actions=policy_config["allowed_actions"],
+    risk_policy=policy_config["risk_policy"]
     )
 
     artifact = load_artifact(
@@ -212,32 +221,40 @@ async def run_replay(
 
     surface = PlaywrightSurface()
 
-    engine = ReplayEngine(
-        surface=surface,
-        policy=policy,
-        logger=logger
+# Uses the same browser session when human intervention is required.
+    handoff = HandoffController(
+    surface=surface,
+    logger=logger
     )
 
+    engine = ReplayEngine(
+    surface=surface,
+    policy=policy,
+    logger=logger,
+    handoff=handoff
+    )
+
+
+# Build replay inputs from the command-line values.
     await surface.open()
 
     try:
+        # Build replay inputs from the command-line values.
+        inputs = {
+            "member_id": member_id
+        }
+
+        if opening_deposit is not None:
+            inputs["opening_deposit"] = opening_deposit
+
         result = await engine.replay(
-            artifact=artifact,
-            inputs={
-                "member_id": member_id
-            }
+            artifact,
+            inputs=inputs
         )
 
         print("\nDeterministic Replay")
-        print("--------------------")
         print("LLM decision calls: 0")
-
-        print(
-            json.dumps(
-                result.model_dump(mode="json"),
-                indent=2
-            )
-        )
+        print(result.model_dump_json(indent=2))
 
     finally:
         await surface.close()
@@ -286,7 +303,12 @@ def main():
         required=True,
         help="Member number used for replay"
     )
-
+    replay_parser.add_argument(
+        "--opening-deposit",
+    type=float,
+        required=False,
+        help="Opening deposit used for account creation"
+    )
     args = parser.parse_args()
 
     if args.command == "discover":
@@ -300,10 +322,11 @@ def main():
     elif args.command == "replay":
         asyncio.run(
             run_replay(
-                artifact_path=args.artifact,
-                member_id=args.member_id
-            )
+        artifact_path=args.artifact,
+        member_id=args.member_id,
+        opening_deposit=args.opening_deposit
         )
+    )
 
 
 if __name__ == "__main__":

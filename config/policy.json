@@ -5,6 +5,7 @@
   "allowed_routes": [
     "/",
     "/member-search",
+    "/member-search/continue",
     "/new-account",
     "/new-account/review",
     "/new-account/submit"
