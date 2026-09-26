@@ -1,0 +1,39 @@
+<!-- Simulates a temporary legacy-system processing screen. -->
+
+{% extends "base.html" %}
+
+{% block title %}
+Processing Request
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+    <h1>Processing Request</h1>
+
+    <div class="message warning">
+        The member system is still processing this request.
+    </div>
+
+    <p>
+        Please continue once the temporary processing step is complete.
+    </p>
+
+    <form method="post" action="/member-search/continue">
+
+        <input
+            type="hidden"
+            name="member_id"
+            value="{{ member_id }}"
+        >
+
+        <button type="submit">
+            Continue
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}

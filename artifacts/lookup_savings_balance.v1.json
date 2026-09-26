@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.0",
+  "capability_version": 1,
+  "name": "lookup_savings_balance",
+  "description": "Looks up a Northwind Community Bank member and returns the current savings balance.",
+  "surface_type": "web",
+  "target_origin": "http://127.0.0.1:8000",
+  "inputs": [
+    {
+      "name": "member_id",
+      "type": "string",
+      "description": "Member number to search for.",
+      "required": true
+    }
+  ],
+  "outputs": [
+    {
+      "name": "savings_balance",
+      "type": "string",
+      "description": "Current savings account balance."
+    }
+  ],
+  "steps": [
+    {
+      "action": "navigate",
+      "target": null,
+      "value": "http://127.0.0.1:8000",
+      "output_key": null,
+      "risk": "safe",
+      "reason": "Open the target application.",
+      "timeout_ms": 5000
+    },
+    {
+      "action": "type",
+      "target": {
+        "description": "Member Number",
+        "role": null,
+        "name": "member_id",
+        "text": null,
+        "css": null
+      },
+      "value": "{{member_id}}",
+      "output_key": null,
+      "risk": "safe",
+      "reason": "Enter member number",
+      "timeout_ms": 5000
+    },
+    {
+      "action": "click",
+      "target": {
+        "description": "Find Member",
+        "role": "button",
+        "name": null,
+        "text": null,
+        "css": null
+      },
+      "value": null,
+      "output_key": null,
+      "risk": "safe",
+      "reason": "Submit member lookup",
+      "timeout_ms": 5000
+    },
+    {
+      "action": "extract",
+      "target": {
+        "description": "Savings balance",
+        "role": null,
+        "name": null,
+        "text": null,
+        "css": "tr:has-text(\"Savings\") td:nth-child(2)"
+      },
+      "value": null,
+      "output_key": "savings_balance",
+      "risk": "safe",
+      "reason": "Extract current savings balance",
+      "timeout_ms": 5000
+    }
+  ],
+  "checkpoints": [
+    {
+      "after_step": 3,
+      "description": "Member search should reach the member details page.",
+      "expected_text": "Member Details",
+      "expected_url_contains": null
+    }
+  ],
+  "success_condition": "The savings_balance output is extracted from the member details page."
+}

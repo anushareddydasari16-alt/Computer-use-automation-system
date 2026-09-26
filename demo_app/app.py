@@ -1,7 +1,7 @@
-# Importing required libraries and modules
+# Runs the Northwind Community Bank demo application.
 
-import json
 import asyncio
+import json
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
@@ -12,11 +12,12 @@ from fastapi.templating import Jinja2Templates
 
 app = FastAPI(title="Northwind Community Bank")
 
-# Creating Base folder for templates, static files, and demo data
-
+# Base folder for templates, static files, and demo data
 app_folder = Path(__file__).resolve().parent
 
-templates = Jinja2Templates(directory=str(app_folder / "templates"))
+templates = Jinja2Templates(
+    directory=str(app_folder / "templates")
+)
 
 app.mount(
     "/static",
@@ -25,8 +26,7 @@ app.mount(
 )
 
 
-# Loading the synthetic member data once when the app starts
-
+# Load synthetic member data when the application starts
 def load_members():
     data_file = app_folder / "data" / "members.json"
 
@@ -36,9 +36,11 @@ def load_members():
 
 members = load_members()
 
-# Show the search page and simulate a few controlled legacy-system conditions.
+
+# Show the member search page and controlled test conditions
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
+
     if request.query_params.get("permission") == "denied":
         return templates.TemplateResponse(
             request=request,
@@ -57,30 +59,80 @@ async def home(request: Request):
 
 
 # Search for a member using the entered member number
-
 @app.post("/member-search", response_class=HTMLResponse)
 async def member_search(
     request: Request,
     member_id: str = Form(...)
 ):
     member_id = member_id.strip()
+
+    # Reserved test number used to simulate permission failure
+    if member_id == "70007":
+        return templates.TemplateResponse(
+            request=request,
+            name="permission_denied.html",
+            context={}
+        )
+
+    # Reserved test member used to simulate a temporary processing screen
+    if member_id == "80008":
+        return templates.TemplateResponse(
+            request=request,
+            name="processing.html",
+            context={
+                "member_id": member_id
+            }
+        )
+
     member = members.get(member_id)
 
     if member is None:
         return templates.TemplateResponse(
             request=request,
             name="not_found.html",
-            context={"member_id": member_id}
+            context={
+                "member_id": member_id
+            }
         )
 
     return templates.TemplateResponse(
         request=request,
         name="member.html",
-        context={"member": member}
+        context={
+            "member": member
+        }
     )
 
-# Opening the new account form used for the human approval demo.
 
+# Continue after the temporary processing screen
+@app.post("/member-search/continue", response_class=HTMLResponse)
+async def continue_member_search(
+    request: Request,
+    member_id: str = Form(...)
+):
+    member_id = member_id.strip()
+
+    member = members.get(member_id)
+
+    if member is None:
+        return templates.TemplateResponse(
+            request=request,
+            name="not_found.html",
+            context={
+                "member_id": member_id
+            }
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="member.html",
+        context={
+            "member": member
+        }
+    )
+
+
+# Open the new account form
 @app.get("/new-account", response_class=HTMLResponse)
 async def new_account(request: Request):
     return templates.TemplateResponse(
@@ -90,8 +142,7 @@ async def new_account(request: Request):
     )
 
 
-# Validate the member and account type before showing the final review page.
-
+# Validate member and account type before review
 @app.post("/new-account/review", response_class=HTMLResponse)
 async def review_new_account(
     request: Request,
@@ -100,18 +151,22 @@ async def review_new_account(
     opening_deposit: float = Form(...)
 ):
     member_id = member_id.strip()
+
     member = members.get(member_id)
 
-    # The member must already exist before a new account can be opened
     if member is None:
         return templates.TemplateResponse(
             request=request,
             name="not_found.html",
-            context={"member_id": member_id}
+            context={
+                "member_id": member_id
+            }
         )
 
-    # Prevent opening the same account type twice for one member
-    existing_accounts = member.get("accounts", [])
+    existing_accounts = member.get(
+        "accounts",
+        []
+    )
 
     for account in existing_accounts:
         if account["type"].lower() == account_type.lower():
@@ -134,8 +189,8 @@ async def review_new_account(
         }
     )
 
-# Completed the demo account request after the final review step.
 
+# Complete the demo account request after review
 @app.post("/new-account/submit", response_class=HTMLResponse)
 async def submit_new_account(
     request: Request,

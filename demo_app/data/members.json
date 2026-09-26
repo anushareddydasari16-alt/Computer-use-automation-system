@@ -39,5 +39,20 @@
         "balance": 1276.39
       }
     ]
+  },
+  "80008": {
+    "member_id": "80008",
+    "name": "Caleb Morgan",
+    "status": "Active",
+    "accounts": [
+      {
+        "type": "Savings",
+        "balance": 2468.90
+      },
+      {
+        "type": "Checking",
+        "balance": 931.44
+      }
+    ]
   }
 }

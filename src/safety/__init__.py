@@ -1,0 +1,1 @@
+# Safety checks and redaction helpers for automated actions.
