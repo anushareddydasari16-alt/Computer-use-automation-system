@@ -35,6 +35,7 @@ The target application is a local synthetic banking application built with FastA
 
 ## Project Structure
 
+```text
 computer-use-automation-system/
 │
 ├── artifacts/
@@ -76,6 +77,7 @@ computer-use-automation-system/
 ├── README.md
 ├── REPORT.md
 └── requirements.txt
+```
 
 
 ## 1. Setup
