@@ -1,7 +1,7 @@
 
 ## Computer-Use Automation System
 
-A small end-to-end computer-use automation system built for the interface.ai engineering take-home assignment.
+A small end-to-end computer-use automation system that discovers, records, and replays workflows in a synthetic banking application.
 
 The system uses an LLM during **discovery** to learn how to complete a task in a browser. A successful discovery is converted into a typed, versioned capability artifact. The saved artifact can then be **replayed deterministically without using the LLM for decisions**.
 
