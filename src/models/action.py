@@ -1,4 +1,4 @@
-# Defines the browser actions and risk levels used by the automation system.
+# Defines the typed browser actions used by discovery and replay.
 
 from enum import Enum
 
@@ -27,6 +27,9 @@ class Target(BaseModel):
     text: str | None = None
     css: str | None = None
 
+    # Explains why this target should remain stable during replay.
+    robustness_note: str | None = None
+
 
 class BrowserAction(BaseModel):
     action: ActionType
@@ -35,4 +38,8 @@ class BrowserAction(BaseModel):
     output_key: str | None = None
     risk: RiskLevel = RiskLevel.SAFE
     reason: str = ""
-    timeout_ms: int = Field(default=5000, ge=500, le=30000)
+    timeout_ms: int = Field(
+        default=5000,
+        ge=500,
+        le=30000
+    )

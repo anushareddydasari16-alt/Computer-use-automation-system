@@ -84,6 +84,21 @@ class DiscoveryAgent:
                 navigate
             )
 
+            # Confirm redirects stayed inside the allowed application.
+            current_state = await self.surface.observe()
+
+            url_allowed, url_reason = self.policy.check_url(
+                current_state["url"]
+            )
+
+            if not url_allowed:
+                return DiscoveryResult(
+                    success=False,
+                    steps=completed_steps,
+                    outputs=outputs,
+                    stop_reason=url_reason
+                )
+
         except Exception as error:
             return DiscoveryResult(
                 success=False,
@@ -301,6 +316,39 @@ class DiscoveryAgent:
                     )
                 }
             )
+
+            # Make sure the action did not leave the allowed application.
+            current_state = await self.surface.observe()
+
+            url_allowed, url_reason = self.policy.check_url(
+                current_state["url"]
+            )
+
+            if not url_allowed:
+                screenshot_path = self.logger.file_path(
+                    f"discovery_policy_failure_step_{step_number}.png"
+                )
+
+                await self.surface.screenshot(
+                    screenshot_path
+                )
+
+                self.logger.log(
+                    "discovery_policy_failure",
+                    {
+                        "step": step_number,
+                        "url": current_state["url"],
+                        "reason": url_reason,
+                        "screenshot": screenshot_path
+                    }
+                )
+
+                return DiscoveryResult(
+                    success=False,
+                    steps=completed_steps,
+                    outputs=outputs,
+                    stop_reason=url_reason
+                )
 
             if action.action == ActionType.EXTRACT:
                 output_name = (

@@ -1,4 +1,5 @@
-# Replays saved capabilities without LLM decisions and supports same-session human handoff.
+# Replays saved capabilities without LLM decisions
+# and supports same-session human handoff.
 
 import asyncio
 
@@ -142,6 +143,21 @@ class ReplayEngine:
                     }
                 )
 
+                # Check that every automated action remains
+                # inside the routes allowed by the policy.
+                state = await self.surface.observe()
+
+                url_allowed, url_reason = self.policy.check_url(
+                    state["url"]
+                )
+
+                if not url_allowed:
+                    return await self._failure_with_evidence(
+                        step_number=step_number,
+                        expected="Current URL allowed by policy",
+                        observed=url_reason
+                    )
+
             checkpoint = self._checkpoint_for_step(
                 artifact.checkpoints,
                 step_number
@@ -184,7 +200,8 @@ class ReplayEngine:
 
         return RunResult(
             status=RunStatus.SUCCESS,
-            outputs=outputs
+            outputs=outputs,
+            recoveries=self.recoveries
         )
 
     async def _handle_handoff(
@@ -303,6 +320,7 @@ class ReplayEngine:
 
             return RunResult(
                 status=RunStatus.BUSINESS_OUTCOME,
+                recoveries=self.recoveries,
                 business_outcome="member_not_found"
             )
 
@@ -317,6 +335,7 @@ class ReplayEngine:
 
             return RunResult(
                 status=RunStatus.BUSINESS_OUTCOME,
+                recoveries=self.recoveries,
                 business_outcome="account_already_exists"
             )
 
@@ -402,6 +421,20 @@ class ReplayEngine:
                 observed=str(error)
             )
 
+        # Check the URL after the recovery action.
+        state = await self.surface.observe()
+
+        url_allowed, url_reason = self.policy.check_url(
+            state["url"]
+        )
+
+        if not url_allowed:
+            return await self._failure_with_evidence(
+                step_number=step_number,
+                expected="Recovery URL allowed by policy",
+                observed=url_reason
+            )
+
         self.recoveries.append(
             {
                 "step": step_number,
@@ -414,7 +447,8 @@ class ReplayEngine:
             "recovery_completed",
             {
                 "step": step_number,
-                "condition": "processing_interstitial"
+                "condition": "processing_interstitial",
+                "url": state["url"]
             }
         )
 
@@ -509,6 +543,7 @@ class ReplayEngine:
             await self.surface.screenshot(
                 screenshot_path
             )
+
         except Exception:
             screenshot_path = None
 
@@ -536,6 +571,7 @@ class ReplayEngine:
     ):
         return RunResult(
             status=RunStatus.FAILURE,
+            recoveries=self.recoveries,
             failure=FailureDetail(
                 failed_step=step_number,
                 expected=expected,

@@ -52,17 +52,51 @@ For a visible button called Find Member:
 
 {
   "description": "Find Member",
-  "role": "button",
-  "name": "Find Member"
+  "role": "button"
 }
 
-When the requested information becomes visible, use an extract action.
+Extraction rules:
+- When the requested information becomes visible, use an extract action.
+- Extract the actual requested value, not its label or heading.
+- If the goal asks for a balance, extract the monetary amount associated with the requested account type.
+- Never return the word "Savings" when the goal asks for the savings balance.
+- Never return the word "Checking" when the goal asks for the checking balance.
+- If a row contains an account type and an amount, use the account type to identify the correct row and extract the amount from that row.
+- For a balance, the extracted text should normally look like a monetary value such as "$3187.45".
+- Set output_key to a short useful name that matches the requested information.
 
-For an extract action:
-- Target the specific visible value when possible.
-- Set output_key to a short useful name.
+Example:
 
-Examples:
+If the visible page contains:
+
+Savings    $3187.45
+Checking   $864.20
+
+and the goal asks for the current savings balance, the correct extract action is:
+
+{
+  "action": "extract",
+  "target": {
+    "description": "Savings balance",
+    "text": "$3187.45"
+  },
+  "output_key": "savings_balance",
+  "risk": "safe",
+  "reason": "Extract the monetary value associated with the Savings account."
+}
+
+Do not use this incorrect action:
+
+{
+  "action": "extract",
+  "target": {
+    "description": "Savings balance",
+    "text": "Savings"
+  },
+  "output_key": "savings_balance"
+}
+
+Useful output key examples:
 - savings_balance
 - checking_balance
 - member_name
@@ -78,6 +112,11 @@ Business and error states:
 - Account Already Exists is a legitimate business outcome.
 - Permission Denied is a blocked state.
 - Do not guess if the page is unsafe, blocked, or unclear.
+
+Completion rules:
+- Complete the goal only after the actual requested value has been extracted.
+- A field label, account type, heading, or descriptive word is not a successful output when the goal asks for a value.
+- For a savings balance goal, success requires extracting the Savings monetary amount.
 
 Return exactly one BrowserAction that matches the provided schema.
 """

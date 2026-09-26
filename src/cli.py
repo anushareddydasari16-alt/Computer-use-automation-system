@@ -55,15 +55,41 @@ def build_lookup_artifact(discovery_result):
     )
 
     # Use a stable row-based selector for the savings balance.
+    # Add simple notes explaining why the replay targets are stable.
     for step in reusable_steps:
-        if (
-            step.action == ActionType.EXTRACT
-            and step.output_key == "savings_balance"
-        ):
-            step.target = Target(
-                description="Savings balance",
-                css='tr:has-text("Savings") td:nth-child(2)'
+
+     if (
+        step.action == ActionType.TYPE
+        and step.target
+        and step.target.name == "member_id"
+    ):
+        step.target.robustness_note = (
+            "Uses the form field name 'member_id' "
+            "instead of page position."
+        )
+
+     if (
+        step.action == ActionType.CLICK
+        and step.target
+        and step.target.description == "Find Member"
+    ):
+        step.target.robustness_note = (
+            "Uses the visible Find Member button "
+            "instead of coordinates."
+        )
+
+     if (
+        step.action == ActionType.EXTRACT
+        and step.output_key == "savings_balance"
+    ):
+        step.target = Target(
+            description="Savings balance",
+            css='tr:has-text("Savings") td:nth-child(2)',
+            robustness_note=(
+                "Targets the Savings account row "
+                "instead of the discovered dollar value."
             )
+        )
 
     checkpoint_step = 1
 

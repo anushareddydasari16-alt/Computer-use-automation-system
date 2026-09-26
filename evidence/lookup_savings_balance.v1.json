@@ -37,12 +37,13 @@
         "role": null,
         "name": "member_id",
         "text": null,
-        "css": null
+        "css": null,
+        "robustness_note": "Uses the form field name 'member_id' instead of page position."
       },
       "value": "{{member_id}}",
       "output_key": null,
       "risk": "safe",
-      "reason": "Enter member number",
+      "reason": "Enter member number to search",
       "timeout_ms": 5000
     },
     {
@@ -52,12 +53,13 @@
         "role": "button",
         "name": null,
         "text": null,
-        "css": null
+        "css": null,
+        "robustness_note": "Uses the visible Find Member button instead of coordinates."
       },
       "value": null,
       "output_key": null,
       "risk": "safe",
-      "reason": "Submit member lookup",
+      "reason": "Click the Find Member button to look up member 10001.",
       "timeout_ms": 5000
     },
     {
@@ -67,12 +69,13 @@
         "role": null,
         "name": null,
         "text": null,
-        "css": "tr:has-text(\"Savings\") td:nth-child(2)"
+        "css": "tr:has-text(\"Savings\") td:nth-child(2)",
+        "robustness_note": "Targets the Savings account row instead of the discovered dollar value."
       },
       "value": null,
       "output_key": "savings_balance",
       "risk": "safe",
-      "reason": "Extract current savings balance",
+      "reason": "Extract the monetary value associated with the Savings account.",
       "timeout_ms": 5000
     }
   ],
