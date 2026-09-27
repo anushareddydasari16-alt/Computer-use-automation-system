@@ -1,5 +1,5 @@
 
-## Computer-Use Automation System
+# Computer-Use Automation System
 
 A small end-to-end computer-use automation system that discovers, records, and replays workflows in a synthetic banking application.
 
@@ -85,8 +85,8 @@ computer-use-automation-system/
 Clone the repository and move into the project folder.
 
 ```bash
-git clone <YOUR_PUBLIC_REPOSITORY_URL>
-cd computer-use-automation-system
+git clone https://github.com/anushareddydasari16-alt/Computer-use-automation-system.git
+cd Computer-use-automation-system
 ```
 
 Create a Python virtual environment.
