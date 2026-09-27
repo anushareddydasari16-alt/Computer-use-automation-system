@@ -31,9 +31,14 @@ The target application is a local synthetic banking application built with FastA
 - Pytest
 - Jinja2
 
+## Architecture
 
+The system uses an LLM during discovery to learn a workflow and save it as a reusable capability artifact. Replay then executes the saved artifact deterministically without using the LLM for action decisions.
+
+![Computer-Use Automation System Architecture](docs/Architecture.png)
 
 ## Project Structure
+
 
 ```text
 computer-use-automation-system/
